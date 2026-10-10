@@ -146,3 +146,23 @@ $$;
 
 revoke all on function public.redeem_voucher(text) from public, anon;
 grant execute on function public.redeem_voucher(text) to authenticated;
+
+-- Atomic TOTP replay prevention: the factor row can accept a step only once.
+create or replace function public.accept_totp_step(p_factor_id uuid, p_step bigint, p_enable boolean default false)
+returns boolean language plpgsql security definer set search_path = ''
+as $$
+declare v_user uuid := auth.uid(); v_rows integer;
+begin
+ if v_user is null then return false; end if;
+ update public.totp_factors
+ set last_accepted_step=p_step,
+     enabled=enabled or p_enable,
+     enabled_at=case when p_enable and not enabled then now() else enabled_at end
+ where id=p_factor_id and user_id=v_user
+ and (last_accepted_step is null or last_accepted_step < p_step);
+ get diagnostics v_rows = row_count;
+ return v_rows = 1;
+end;
+$$;
+revoke all on function public.accept_totp_step(uuid,bigint,boolean) from public, anon;
+grant execute on function public.accept_totp_step(uuid,bigint,boolean) to authenticated;
