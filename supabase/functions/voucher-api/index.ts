@@ -17,6 +17,7 @@ const randomCode = () => {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const bytes = crypto.getRandomValues(new Uint8Array(20));
   return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("").match(/.{1,5}/g)!.join("-");
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
