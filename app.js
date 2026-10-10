@@ -1,6 +1,6 @@
 // Public configuration only. Never place a Supabase service-role key here.
-const SUPABASE_URL = "https://YOUR_PROJECT_REF.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "YOUR_SUPABASE_PUBLISHABLE_KEY";
+const SUPABASE_URL = "https://czlbvwufyxilavvrzvgb.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_ZraHtQzhCfhq30550PNtvA_5z3bI3Hx";
 let supabaseClient = null, currentSession = null, currentProfile = null;
 const $ = (id) => document.getElementById(id);
 const show = (id, yes=true) => $(id)?.classList.toggle("hidden",!yes);
