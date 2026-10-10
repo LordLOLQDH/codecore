@@ -1,0 +1,10 @@
+project_id = "codecore"
+
+[functions.voucher-api]
+verify_jwt = true
+
+[functions.totp-api]
+verify_jwt = true
+
+[functions.admin-api]
+verify_jwt = true
