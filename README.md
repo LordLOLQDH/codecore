@@ -76,3 +76,33 @@ Before production, add and run tests for valid/invalid/expired/disabled vouchers
 
 ## License
 No license has been specified yet.
+
+## Deploy Edge Functions
+
+Install the Supabase CLI and authenticate it, then link this repository to your project:
+
+```sh
+supabase login
+supabase link --project-ref YOUR_PROJECT_REF
+supabase db push
+supabase functions deploy voucher-api
+supabase functions deploy totp-api
+supabase functions deploy admin-api
+```
+
+Set a 32-byte random TOTP encryption key encoded as Base64. Generate one locally with:
+
+```sh
+openssl rand -base64 32
+supabase secrets set TOTP_ENCRYPTION_KEY=PASTE_GENERATED_VALUE
+```
+
+Supabase automatically provides `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` to Edge Functions. Never copy the service-role key into browser files or commit it to GitHub.
+
+### Connect the frontend
+
+Edit `app.js` and replace `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` with the project URL and publishable/anon key from Supabase project settings. These are public client values; service-role keys are not.
+
+### Important remaining production checks
+
+The TOTP module is an implementation draft and must be tested against the deployed schema before production use. In particular, verify the atomic replay-protection RPC with an authenticated user context, factor removal permissions, signup profile provisioning, QR provisioning and code-window handling. The external API-key verification flow and rate limiting also require implementation before third-party apps should rely on this service.
