@@ -26,3 +26,6 @@ button{cursor:pointer;font:inherit}button:disabled,select:disabled{opacity:.55;c
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 
 .password-wrap{display:flex;align-items:stretch;gap:8px}.password-wrap input{flex:1;min-width:0}.password-wrap button{flex:0 0 auto;align-self:stretch;margin-top:0}
+
+/* Keep audit history inside its own bounded scroll region. */
+#audit-list{max-height:280px;overflow-y:auto;overscroll-behavior:contain;padding:0 8px 0 0;border:1px solid var(--line);border-radius:10px}#audit-list .list-row{padding:12px 10px}#notifications-list .list-row{align-items:flex-start;gap:8px}#notifications-list .list-row>span{flex:1;min-width:120px;overflow-wrap:anywhere}#notifications-list .small-button{flex:0 0 auto}
