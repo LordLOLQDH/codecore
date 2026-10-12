@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.0";
-const corsHeaders={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json"};
+const corsHeaders={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, x-retry-count, traceparent, tracestate, baggage","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json"};
 const response=(status:number,body:unknown)=>new Response(JSON.stringify(body),{status,headers:corsHeaders});
 async function currentUser(req:Request) {
  const url=Deno.env.get("SUPABASE_URL"), key=Deno.env.get("SUPABASE_ANON_KEY"), auth=req.headers.get("Authorization");
@@ -62,7 +62,7 @@ async function verifiedStep(secret: string, input: string) {
   return null;
 }
 Deno.serve(async req => {
-  if (req.method === "OPTIONS") return new Response("ok",{headers:{"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS"}});
+  if (req.method === "OPTIONS") return new Response("ok",{headers:{"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, x-retry-count, traceparent, tracestate, baggage","Access-Control-Allow-Methods":"POST, OPTIONS"}});
   if (req.method !== "POST") return response(405,{error:"method_not_allowed"});
   try {
     const session = await currentUser(req);
