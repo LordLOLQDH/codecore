@@ -1,46 +1,18 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.0";
-const corsHeaders={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, x-retry-count, traceparent, tracestate, baggage","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json"};
-const response=(status:number,body:unknown)=>new Response(JSON.stringify(body),{status,headers:corsHeaders});
-async function currentUser(req:Request) {
- const url=Deno.env.get("SUPABASE_URL"),key=Deno.env.get("SUPABASE_ANON_KEY"),auth=req.headers.get("Authorization");
- if(!url||!key) throw new Error("server_not_configured"); if(!auth?.startsWith("Bearer ")) return null;
- const client=createClient(url,key,{global:{headers:{Authorization:auth}},auth:{persistSession:false,autoRefreshToken:false}});
- const {data,error}=await client.auth.getUser(); return error||!data.user?null:{user:data.user,client};
-}
-async function adminClient() {
- const url=Deno.env.get("SUPABASE_URL"),key=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"); if(!url||!key) throw new Error("server_not_configured");
- return createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
-}
-async function isAdmin(uid:string) { const db=await adminClient(); const {data}=await db.from("profiles").select("role").eq("user_id",uid).maybeSingle(); return data?.role==="admin"; }
-async function audit(actorId:string,action:string,targetType:string,targetId?:string,details:Record<string,unknown>={}) { const db=await adminClient(); await db.from("audit_logs").insert({actor_id:actorId,action,target_type:targetType,target_id:targetId??null,details}); }
-Deno.serve(async req => {
-  if (req.method === "OPTIONS") return new Response("ok",{headers:{"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, x-retry-count, traceparent, tracestate, baggage","Access-Control-Allow-Methods":"POST, OPTIONS"}});
-  if (req.method !== "POST") return response(405,{error:"method_not_allowed"});
-  const session = await currentUser(req);
-  if (!session) return response(401,{error:"authentication_required"});
-  if (!await isAdmin(session.user.id)) return response(403,{error:"admin_required"});
-  let body: Record<string,unknown>;
-  try { body = await req.json(); } catch { return response(400,{error:"invalid_json"}); }
-  const db = await adminClient();
-  if (body.action === "overview") {
-    const [v,r,p,a] = await Promise.all([
-      db.from("vouchers").select("id,is_disabled,redemption_count,max_redemptions,expires_at,created_at",{count:"exact"}),
-      db.from("voucher_redemptions").select("id",{count:"exact",head:true}),
-      db.from("profiles").select("user_id",{count:"exact",head:true}),
-      db.from("audit_logs").select("id,actor_id,action,target_type,target_id,details,created_at").order("created_at",{ascending:false}).limit(100)
-    ]);
-    if (v.error || r.error || p.error || a.error) return response(500,{error:"admin_query_failed"});
-    return response(200,{stats:{vouchers:v.count??0,activeVouchers:(v.data??[]).filter(x=>!x.is_disabled&&(!x.expires_at||new Date(x.expires_at)>new Date())&&x.redemption_count<x.max_redemptions).length,disabledVouchers:(v.data??[]).filter(x=>x.is_disabled).length,redemptions:r.count??0,users:p.count??0},vouchers:v.data??[],activity:a.data??[]});
-  }
-  if (body.action === "set_role") {
-    const userId = typeof body.userId==="string"?body.userId:"";
-    const role = body.role;
-    if (!/^[0-9a-f-]{36}$/i.test(userId) || !["admin","user"].includes(String(role))) return response(400,{error:"invalid_input"});
-    if (userId === session.user.id && role === "user") return response(400,{error:"cannot_remove_own_admin_role"});
-    const {error} = await db.from("profiles").upsert({user_id:userId,role},{onConflict:"user_id"});
-    if (error) return response(500,{error:"role_update_failed"});
-    await audit(session.user.id,"admin.role_changed","profile",userId,{role});
-    return response(200,{ok:true});
-  }
-  return response(400,{error:"unknown_action"});
+const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, x-retry-count, traceparent, tracestate, baggage","Access-Control-Allow-Methods":"POST, OPTIONS","Content-Type":"application/json"};
+const out=(s:number,b:unknown)=>new Response(JSON.stringify(b),{status:s,headers:cors});
+Deno.serve(async req=>{
+ if(req.method==="OPTIONS")return new Response("ok",{headers:cors});if(req.method!=="POST")return out(405,{error:"method_not_allowed"});
+ const url=Deno.env.get("SUPABASE_URL"),anon=Deno.env.get("SUPABASE_ANON_KEY"),service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");if(!url||!anon||!service)return out(500,{error:"server_not_configured"});
+ const auth=req.headers.get("Authorization")||"";if(!auth.startsWith("Bearer "))return out(401,{error:"authentication_required"});
+ const uc=createClient(url,anon,{global:{headers:{Authorization:auth}},auth:{persistSession:false,autoRefreshToken:false}}),{data:ud,error:ue}=await uc.auth.getUser();if(ue||!ud.user)return out(401,{error:"invalid_session"});
+ const db=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}}),{data:profile}=await db.from("profiles").select("role").eq("user_id",ud.user.id).maybeSingle(),role=profile?.role||"user",isAdmin=["admin","superadmin"].includes(role),isSuper=role==="superadmin";
+ let b:Record<string,unknown>;try{b=await req.json();}catch{return out(400,{error:"invalid_json"});}
+ const audit=async(action:string,type:string,id?:string,details:Record<string,unknown>={})=>{await db.from("audit_logs").insert({actor_id:ud.user.id,action,target_type:type,target_id:id??null,details});};
+ if(b.action==="my_notifications"){const {data,error}=await db.from("notifications").select("id,title,body,kind,read_at,created_at").eq("recipient_id",ud.user.id).order("created_at",{ascending:false}).limit(50);if(error)return out(500,{error:"notifications_failed"});return out(200,{notifications:data||[]});}
+ if(b.action==="mark_notification_read"){const id=Number(b.id);if(!Number.isSafeInteger(id))return out(400,{error:"invalid_input"});const {error}=await db.from("notifications").update({read_at:new Date().toISOString()}).eq("id",id).eq("recipient_id",ud.user.id);if(error)return out(500,{error:"notification_update_failed"});return out(200,{ok:true});}
+ if(b.action==="overview"){if(!isAdmin)return out(403,{error:"admin_required"});const [v,r,p,a,n,c]=await Promise.all([db.from("vouchers").select("id,is_disabled,redemption_count,max_redemptions,expires_at,created_at,balance_cents,initial_balance_cents,company_id,label",{count:"exact"}),db.from("voucher_redemptions").select("id",{count:"exact",head:true}),db.from("profiles").select("user_id,display_name,role,created_at",{count:"exact"}),db.from("audit_logs").select("id,actor_id,action,target_type,target_id,details,created_at").order("created_at",{ascending:false}).limit(100),db.from("notifications").select("id",{count:"exact",head:true}).eq("recipient_id",ud.user.id).is("read_at",null),db.from("companies").select("id,name,owner_id,created_at,integration_code")]);if(v.error||r.error||p.error||a.error||n.error||c.error)return out(500,{error:"admin_query_failed"});const users=(p.data||[]).map(x=>({user_id:x.user_id,display_name:x.display_name,role:x.role,created_at:x.created_at,email:null as string|null}));if(isSuper){const {data:authUsers}=await db.auth.admin.listUsers({page:1,perPage:1000});const emails=new Map((authUsers?.users||[]).map(u=>[u.id,u.email||null]));users.forEach(u=>u.email=emails.get(u.user_id)||null);}return out(200,{stats:{vouchers:v.count??0,activeVouchers:(v.data||[]).filter(x=>!x.is_disabled&&(!x.expires_at||new Date(x.expires_at)>new Date())&&(x.initial_balance_cents>0?x.balance_cents>0:x.redemption_count<x.max_redemptions)).length,disabledVouchers:(v.data||[]).filter(x=>x.is_disabled).length,redemptions:r.count??0,users:p.count??0,companies:c.data?.length??0,unreadNotifications:n.count??0},vouchers:v.data||[],users:isSuper?users:[],companies:isSuper?(c.data||[]):[],activity:a.data||[],isSuper});}
+ if(b.action==="set_role"){if(!isSuper)return out(403,{error:"superadmin_required"});const id=typeof b.userId==="string"?b.userId:"",next=String(b.role);if(!/^[0-9a-f-]{36}$/i.test(id)||!["user","shop_admin","admin","superadmin"].includes(next))return out(400,{error:"invalid_input"});if(id===ud.user.id&&next!=="superadmin")return out(400,{error:"cannot_remove_own_superadmin_role"});const {error}=await db.from("profiles").upsert({user_id:id,role:next},{onConflict:"user_id"});if(error)return out(500,{error:"role_update_failed"});await audit("admin.role_changed","profile",id,{role:next});return out(200,{ok:true});}
+ if(b.action==="notify"){if(!isSuper)return out(403,{error:"superadmin_required"});const title=typeof b.title==="string"?b.title.trim().slice(0,120):"",body=typeof b.body==="string"?b.body.trim().slice(0,1000):"",target=typeof b.target==="string"?b.target:"all";if(title.length<2||body.length<2||!["all","admins","user"].includes(target))return out(400,{error:"invalid_input"});let q=db.from("profiles").select("user_id");if(target==="admins")q=q.in("role",["admin","superadmin"]);if(target==="user")q=q.eq("role","user");const {data:people,error}=await q;if(error)return out(500,{error:"recipient_lookup_failed"});const rows=(people||[]).map(x=>({recipient_id:x.user_id,title,body,kind:"announcement"}));if(rows.length){const {error:e}=await db.from("notifications").insert(rows);if(e)return out(500,{error:"notification_send_failed"});}await audit("admin.notification_sent","notification",undefined,{target,count:rows.length,title});return out(200,{sent:rows.length});}
+ return out(400,{error:"unknown_action"});
 });
