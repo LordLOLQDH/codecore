@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f4f0e8">
 <title>CODECORE Market — Demo-Shop</title><link rel="stylesheet" href="./shop.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer src="./shop.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer src="./shop.js"></script><script>if(new URLSearchParams(location.search).get("embed")==="1")document.body.classList.add("embed-mode");</script>
 </head>
-<body>
+<body class="shop-page">
 <header class="shop-header"><a class="shop-logo" href="./shop.html"><span class="logo-mark">cc</span><span>market<span class="logo-dot">.</span><small>DEMO STORE</small></span></a><a class="back-link" href="./index.html">CODECORE Backend ↗</a></header>
 <main>
 <section class="shop-hero"><p class="kicker">DIE CODECORE TESTUMGEBUNG</p><h1>Gute Dinge.<br><em>Einfach bestellen.</em></h1><p>Ein eigenständiger Shop zum sicheren Testen von Gutscheinen. Dein Gutschein wird erst beim verbindlichen Klick auf „Jetzt bestellen“ belastet.</p><div id="shop-status" class="shop-status" role="status">Shop wird geladen …</div></section>
