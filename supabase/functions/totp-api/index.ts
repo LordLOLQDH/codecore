@@ -27,8 +27,13 @@ function decode32(s: string) {
   return new Uint8Array(out);
 }
 async function encryptionKey() {
-  const raw = Deno.env.get("TOTP_ENCRYPTION_KEY");
-  if (!raw) throw new Error("totp_encryption_key_missing");
+  let raw = Deno.env.get("TOTP_ENCRYPTION_KEY");
+  if (!raw) {
+    const db = await adminClient();
+    const { data, error } = await db.rpc("codecore_totp_encryption_key");
+    if (error || typeof data !== "string" || !data) throw new Error("totp_encryption_key_missing");
+    raw = data;
+  }
   const bytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
   if (bytes.length !== 32) throw new Error("TOTP_ENCRYPTION_KEY_must_be_base64_32_bytes");
   return crypto.subtle.importKey("raw", bytes, "AES-GCM", false, ["encrypt","decrypt"]);
