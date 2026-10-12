@@ -21,6 +21,12 @@ jobs:
           test -s styles.css
           test -s workspace.css
           test -s app.js
+          test -s shop.html
+          test -s shop.js
+      - name: Check JavaScript syntax
+        run: |
+          node --check app.js
+          node --check shop.js
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload site artifact
