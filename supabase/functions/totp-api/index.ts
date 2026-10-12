@@ -90,7 +90,7 @@ Deno.serve(async req => {
       const step = await verifiedStep(secret,code);
       if (step === null) return response(400,{error:"invalid_code"});
       if (factor.last_accepted_step !== null && step <= Number(factor.last_accepted_step)) return response(409,{error:"code_already_used"});
-      const { data: accepted, error } = await db.rpc("accept_totp_step",{p_factor_id:factor.id,p_step:step,p_enable:action==="confirm"});
+      const { data: accepted, error } = await session.client.rpc("accept_totp_step",{p_factor_id:factor.id,p_step:step,p_enable:action==="confirm"});
       if (error) return response(500,{error:"verification_failed"});
       if (!accepted) return response(409,{error:"code_already_used"});
       await audit(uid,action==="confirm"?"totp.enabled":"totp.verified","totp_factor",factor.id);
