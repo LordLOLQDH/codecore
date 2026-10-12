@@ -24,3 +24,5 @@ button{cursor:pointer;font:inherit}button:disabled,select:disabled{opacity:.55;c
 @media(max-width:700px){.auth-grid,.module-grid{grid-template-columns:1fr}.workspace{margin:24px 0 36px}.card{border-radius:13px}.section-head{align-items:flex-start}}
 @media(max-width:520px){.topbar{gap:8px;padding-inline:14px}.account{font-size:11px;gap:7px}.account .button{padding:8px 10px;min-height:36px}.brand{gap:7px;font-size:13px}.brand-mark{width:28px;height:28px}.hero-actions .button{width:100%;justify-content:center}main{padding-inline:14px}.user-row-main{flex-direction:column}.user-controls{width:100%}.user-controls select{flex:1;max-width:none}.list-row{align-items:flex-start;flex-wrap:wrap}.actions>*{flex:1 1 140px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+.password-wrap{display:flex;align-items:stretch;gap:8px}.password-wrap input{flex:1;min-width:0}.password-wrap button{flex:0 0 auto;align-self:stretch;margin-top:0}
