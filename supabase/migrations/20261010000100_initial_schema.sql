@@ -166,3 +166,26 @@ end;
 $$;
 revoke all on function public.accept_totp_step(uuid,bigint,boolean) from public, anon;
 grant execute on function public.accept_totp_step(uuid,bigint,boolean) to authenticated;
+
+-- TOTP encryption key is stored in Supabase Vault, never in the public repository.
+create or replace function public.codecore_totp_encryption_key()
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'forbidden';
+  end if;
+  return (
+    select decrypted_secret
+    from vault.decrypted_secrets
+    where name = 'CODECORE_TOTP_ENCRYPTION_KEY'
+    order by created_at desc
+    limit 1
+  );
+end;
+$$;
+revoke all on function public.codecore_totp_encryption_key() from public, anon, authenticated;
+grant execute on function public.codecore_totp_encryption_key() to service_role;
